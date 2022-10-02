@@ -6,6 +6,8 @@
 
 #define DEV_MEM_SIZE 512
 
+#undef pr_fmt
+#define pr_fmt(fmt) "%s :" fmt, __func__
 
 /* Pseudo driver memory */
 char memory_buffer[DEV_MEM_SIZE];
@@ -13,8 +15,7 @@ char memory_buffer[DEV_MEM_SIZE];
 /* This hold the device number */
 dev_t device_number;
 
-#undef pr_fmt
-#define pr_fmt(fmt) "%s :" fmt, __func__
+
 
 /* Cdev Variable */
 
@@ -32,27 +33,28 @@ struct device *pcd_device;
 
 loff_t pcd_lseek(struct file *filp, loff_t off, int whence)
 {
-
+	pr_info("lseek requested \n");
 	return 0;
 }
 ssize_t pcd_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos)
 {
-
+	pr_info("read requested for %zu bytes \n",count);
+	
 	return 0;
 }
 ssize_t pcd_write(struct file *filp, const char __user *buff, size_t count,  loff_t *f_pos)
 {
-
+	pr_info("write requested for %zu bytes \n",count);
 	return 0;
 }
 int pcd_open(struct inode *inode, struct file *filp)
 {
-
+	pr_info("Open was successful\n");
 	return 0;
 }
 int pcd_release(struct inode *inode, struct file *flip)
 {
-
+	pr_info("Close was successful\n");
 	return 0;
 }
 
@@ -73,7 +75,6 @@ struct file_operations pcd_fops =
 
 static int __init pcd_init(void)
 {
-	int ret;
 	/* 1.	Dynamically allocate a device number */
 	alloc_chrdev_region(&device_number,0,1,"pcd");
 	pr_info("Device number <major>:<minor> = %d:%d\n", MAJOR(device_number), MINOR(device_number));
@@ -101,6 +102,28 @@ static int __init pcd_init(void)
 
 static void __exit pcd_cleanup(void)
 {
+
+/* Clean-up functions should be called in revers order compare to __init functions order */
+
+/* Destroy device information in sysfs */
+
+	device_destroy(pcd_class, device_number);
+
+/* Destroy device class in sysfs */
+
+	class_destroy(pcd_class);
+	
+/* Unregister a device (cdev structure) from VFS */
+
+	cdev_del(&pcd_cdev);
+
+/* Deallocate a device number */
+
+	unregister_chrdev_region(device_number, 1);
+
+/* Some clean-up message */
+
+pr_info("Module clean-up was succesfull\n");			 
 	
 }
 
