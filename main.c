@@ -32,10 +32,59 @@ struct class *pcd_class;
 
 struct device *pcd_device;
 
-loff_t pcd_lseek(struct file *filp, loff_t off, int whence)
+loff_t pcd_lseek(struct file *filp, loff_t offset, int whence)
 {
+	loff_t curr_f_pos;
+	
 	pr_info("lseek requested \n");
-	return 0;
+	pr_info("Current value of file position = %lld", filp->f_pos);
+	
+	switch(whence)
+	{
+		case SEEK_SET:
+		
+			/* Check if offset is greater than buffer array size */
+			
+			if(offset > DEV_MEM_SIZE || offset < 0) 
+			{
+				return -EINVAL;
+			}
+			
+			filp-> f_pos = offset;
+			break;
+			
+		case SEEK_CUR:
+		
+			/*Check if sum of current file position and offset is not greater than buffer size and less than 0 */
+			curr_f_pos = filp-> f_pos + offset;
+			if(curr_f_pos > DEV_MEM_SIZE || curr_f_pos <0)
+			{
+				return -EINVAL;
+			}
+			
+			filp-> f_pos = curr_f_pos;
+			
+			break;
+			
+		case SEEK_END:
+			
+			/*Check if sum of current file position and offset is not greater than buffer size and less than 0 */
+			curr_f_pos = DEV_MEM_SIZE + offset;
+			if(curr_f_pos > DEV_MEM_SIZE || curr_f_pos <0)
+			{
+				return -EINVAL;
+			}
+			filp-> f_pos = curr_f_pos;
+			break;
+		default: 
+			/* Invalid whence argument has been received */
+			return -EINVAL;
+	
+		pr_info("New value of file pointer file position = %lld", filp->f_pos);
+	}
+	
+	return filp->f_pos;
+	
 }	
 ssize_t pcd_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos)
 {
