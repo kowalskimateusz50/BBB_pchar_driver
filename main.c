@@ -3,13 +3,14 @@
 #include<linux/cdev.h>
 #include<linux/device.h>
 #include<linux/kdev_t.h>
+#include<linux/uaccess.h>
 
 #define DEV_MEM_SIZE 512
 
 #undef pr_fmt
 #define pr_fmt(fmt) "%s :" fmt, __func__
 
-/* Pseudo driver memory */
+/* Pseudo driver memory buffer*/
 char memory_buffer[DEV_MEM_SIZE];
  
 /* This hold the device number */
@@ -35,17 +36,82 @@ loff_t pcd_lseek(struct file *filp, loff_t off, int whence)
 {
 	pr_info("lseek requested \n");
 	return 0;
-}
+}	
 ssize_t pcd_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos)
 {
-	pr_info("read requested for %zu bytes \n",count);
+	/* 0. Print read request amount of data bytes and actuall position of data before read */
 	
-	return 0;
+	pr_info("\nread requested for %zu bytes \n",count);
+	pr_info("\nCurrent position of data before reading process = %lld\n", *f_pos);
+	
+	/* 1. Check if value of count data is not greater than buffer size, and if is trim count value */
+	
+	if((*f_pos + count) > DEV_MEM_SIZE)
+	{
+		count = DEV_MEM_SIZE - *f_pos;
+	}
+	
+	/* 2. Copy kernel buffer data to user space */
+	
+	if(copy_to_user(buff, &memory_buffer[*f_pos], count))
+	{
+		return -EFAULT;
+	}
+	
+	/* 4. Update (increment) the current file position */
+	
+	*f_pos += count;
+	
+	/* 5. Print amount of data successfully read and updated file position */
+	
+	pr_info("\nNumber of bytes successfully read = %zu\n", count);
+	pr_info("\nUpdated position of data = %lld\n", *f_pos);
+	
+	/* 6. Return amount of data bytes if data was successfully read */
+	
+	return count;
+	
 }
 ssize_t pcd_write(struct file *filp, const char __user *buff, size_t count,  loff_t *f_pos)
 {
-	pr_info("write requested for %zu bytes \n",count);
-	return 0;
+	/* 0. Print write request amount of data bytes and actuall position of data before read */
+	
+	pr_info("\nWrite requested for %zu bytes \n",count);
+	pr_info("\nCurrent position of data before reading process = %lld\n", *f_pos);
+	
+	/* 1. Check if value of count data is not greater than buffer size, and if is trim count value */
+	
+	if((*f_pos + count) > DEV_MEM_SIZE)
+	{
+		count = DEV_MEM_SIZE - *f_pos;
+	}
+	
+	/* If on input is zero value of data return error */
+	
+	if(!count)
+	{
+		return -ENOMEM;
+	}
+	
+	/* 2. Copy user space data to kernel space */
+	
+	if(copy_from_user(&memory_buffer[*f_pos], buff, count))
+	{
+		return -EFAULT;
+	}
+	
+	/* 4. Update (increment) the current file position */
+	
+	*f_pos += count;
+	
+	/* 5. Print amount of data successfully written and updated file position */
+	
+	pr_info("\nNumber of bytes successfully read = %zu\n", count);
+	pr_info("\nUpdated position of data = %lld\n", *f_pos);
+	
+	/* 6. Return count of data bytes if data was successfully written */
+	
+	return count;
 }
 int pcd_open(struct inode *inode, struct file *filp)
 {
