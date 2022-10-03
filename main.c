@@ -126,7 +126,7 @@ ssize_t pcd_write(struct file *filp, const char __user *buff, size_t count,  lof
 	/* 0. Print write request amount of data bytes and actuall position of data before read */
 	
 	pr_info("\nWrite requested for %zu bytes \n",count);
-	pr_info("\nCurrent position of data before reading process = %lld\n", *f_pos);
+	pr_info("\nCurrent position of data before writing process = %lld\n", *f_pos);
 	
 	/* 1. Check if value of count data is not greater than buffer size, and if is trim count value */
 	
@@ -139,6 +139,7 @@ ssize_t pcd_write(struct file *filp, const char __user *buff, size_t count,  lof
 	
 	if(!count)
 	{
+		pr_err("No memory left on device");
 		return -ENOMEM;
 	}
 	
@@ -155,7 +156,7 @@ ssize_t pcd_write(struct file *filp, const char __user *buff, size_t count,  lof
 	
 	/* 5. Print amount of data successfully written and updated file position */
 	
-	pr_info("\nNumber of bytes successfully read = %zu\n", count);
+	pr_info("\nNumber of bytes successfully written = %zu\n", count);
 	pr_info("\nUpdated position of data = %lld\n", *f_pos);
 	
 	/* 6. Return count of data bytes if data was successfully written */
