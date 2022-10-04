@@ -191,24 +191,77 @@ struct file_operations pcd_fops =
 
 static int __init pcd_init(void)
 {
+/* Module init function with implemented error handling functionality */
+
+	/* Initialization off error handling variable */
+	int ret;
+	
 	/* 1.	Dynamically allocate a device number */
-	alloc_chrdev_region(&device_number,0,1,"pcd");
+	ret = alloc_chrdev_region(&device_number,0,1,"pcd");
+	
+	/* 1.e Error handling */ 
+	if(ret < 0)
+		{
+			goto out;
+		}
+	
 	pr_info("Device number <major>:<minor> = %d:%d\n", MAJOR(device_number), MINOR(device_number));
 	
 	/* 2. Initialization the cdev structure with fops */
 	cdev_init(&pcd_cdev, &pcd_fops);
 	
+
+	
 	/* 3. Register a device (cdev structure) with VFS */
 	pcd_cdev.owner = THIS_MODULE;
-	cdev_add(&pcd_cdev, device_number,1);
+	ret = cdev_add(&pcd_cdev, device_number,1);
+	
+	/* 3.e Error handling */ 
+	if(ret < 0)
+	{
+		goto unreg_chardev_region;
+	}
 	
 	/* 4. Create device class under /sys/class/ */
 	pcd_class = class_create(THIS_MODULE, "pcd_class");
 	
-	/* 5. Populate the sysfs (/sys/class/) with device information */
-	pcd_device = device_create(pcd_class, NULL, device_number, NULL, "pcd");	
+	/* Check if pointer has a valid or is it a pointer to a error */
+	if(IS_ERR(pcd_class))
+	{
+		/* Print some error info */
+		pr_err("Class creation failed\n");
+		/*Convert pointer to error code int */
+		ret = PTR_ERR(pcd_class);
+		goto cdev_del;
+	}
+		
 	
+	/* 5. Populate the sysfs (/sys/class/) with device information */
+	pcd_device = device_create(pcd_class, NULL, device_number, NULL, "pcd");
+		
+	/* Check if pointer has a valid or is it a pointer to a error */
+	if(IS_ERR(pcd_class))
+	{
+		/* Print some error info */
+		pr_err("Device creation failed\n");
+		/*Convert pointer to error code int */
+		ret = PTR_ERR(pcd_device);
+		goto class_del;
+	}
 	pr_info("Module initialization was succesfull\n");
+
+class_del:	
+class_destroy(pcd_class);
+	
+cdev_del:
+cdev_del(&pcd_cdev);	
+	
+unreg_chardev_region:
+	unregister_chrdev_region(device_number, 1);	
+
+out: 
+	pr_err("Module insertion failed");
+	return ret;
 	
 	
 	return 0;
